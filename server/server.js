@@ -36,15 +36,26 @@ const limiter = rateLimit({
 });
 
 // CORS configuration
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] 
-    : ['http://localhost:3000', 'http://localhost:3002'],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
+const allowedOrigins = [
+  'https://dtmishs9pt.us-east-1.awsapprunner.com', // frontend deployed URL
+  'http://localhost:3000', // local development
+];
 
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (like Postman, curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(limiter);
 app.use(express.json({ limit: '10kb' })); // Limit request body size
 
@@ -57,10 +68,10 @@ app.post('/api/analyze', async (req, res) => {
     const { machine_id, temperature, vibration, power_consumption, pressure } = req.body;
 
     // Input validation and sanitization
-    const sanitizedMachineId = typeof machine_id === 'string' 
+    const sanitizedMachineId = typeof machine_id === 'string'
       ? machine_id.trim().replace(/[^a-zA-Z0-9-_]/g, '').substring(0, 50)
       : '';
-    
+
     const numTemperature = parseFloat(temperature);
     const numVibration = parseFloat(vibration);
     const numPower = parseFloat(power_consumption);
@@ -68,32 +79,32 @@ app.post('/api/analyze', async (req, res) => {
 
     // Validate input ranges
     if (!sanitizedMachineId || sanitizedMachineId.length === 0) {
-      return res.status(400).json({ 
-        error: 'Valid machine ID is required' 
+      return res.status(400).json({
+        error: 'Valid machine ID is required'
       });
     }
-    
+
     if (isNaN(numTemperature) || numTemperature < -50 || numTemperature > 200) {
-      return res.status(400).json({ 
-        error: 'Temperature must be between -50°C and 200°C' 
+      return res.status(400).json({
+        error: 'Temperature must be between -50°C and 200°C'
       });
     }
-    
+
     if (isNaN(numVibration) || numVibration < 0 || numVibration > 1000) {
-      return res.status(400).json({ 
-        error: 'Vibration must be between 0 and 1000 Hz' 
+      return res.status(400).json({
+        error: 'Vibration must be between 0 and 1000 Hz'
       });
     }
-    
+
     if (isNaN(numPower) || numPower < 0 || numPower > 10000) {
-      return res.status(400).json({ 
-        error: 'Power consumption must be between 0 and 10000 W' 
+      return res.status(400).json({
+        error: 'Power consumption must be between 0 and 10000 W'
       });
     }
-    
+
     if (isNaN(numPressure) || numPressure < 0 || numPressure > 200) {
-      return res.status(400).json({ 
-        error: 'Pressure must be between 0 and 200 PSI' 
+      return res.status(400).json({
+        error: 'Pressure must be between 0 and 200 PSI'
       });
     }
 
@@ -132,8 +143,8 @@ app.post('/api/analyze', async (req, res) => {
 
   } catch (error) {
     console.error('Analysis error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error during analysis' 
+    res.status(500).json({
+      error: 'Internal server error during analysis'
     });
   }
 });
@@ -141,12 +152,12 @@ app.post('/api/analyze', async (req, res) => {
 app.get('/api/history', async (req, res) => {
   try {
     const { machine_id } = req.query;
-    
+
     // Validate and sanitize machine_id parameter
     const sanitizedMachineId = machine_id && typeof machine_id === 'string'
       ? machine_id.replace(/[^a-zA-Z0-9-_]/g, '').substring(0, 50)
       : null;
-    
+
     const history = await Database.getHistory(sanitizedMachineId);
     res.json({
       success: true,
@@ -154,8 +165,8 @@ app.get('/api/history', async (req, res) => {
     });
   } catch (error) {
     console.error('History error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error fetching history' 
+    res.status(500).json({
+      error: 'Internal server error fetching history'
     });
   }
 });
@@ -169,16 +180,16 @@ app.get('/api/machines', async (req, res) => {
     });
   } catch (error) {
     console.error('Machines error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error fetching machines' 
+    res.status(500).json({
+      error: 'Internal server error fetching machines'
     });
   }
 });
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     mode: process.env.AI_MODE || 'STUB',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
