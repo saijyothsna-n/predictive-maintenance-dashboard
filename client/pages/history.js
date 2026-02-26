@@ -3,7 +3,11 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3001';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? 'https://exrvwwcsfv.us-east-1.awsapprunner.com'
+    : 'http://localhost:3001');
 
 export default function History() {
   const [history, setHistory] = useState([]);
